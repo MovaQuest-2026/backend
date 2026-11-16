@@ -33,13 +33,13 @@ import pytest_asyncio  # noqa: E402
 import redis as syncredis  # noqa: E402
 import redis.asyncio as aioredis  # noqa: E402
 from httpx import ASGITransport, AsyncClient  # noqa: E402
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker  # noqa: E402
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine  # noqa: E402
 from sqlalchemy.orm import sessionmaker  # noqa: E402
 from testcontainers.core.docker_client import DockerClient  # noqa: E402
 from testcontainers.postgres import PostgresContainer  # noqa: E402
 
 from src.infrastructure.config.settings import get_settings  # noqa: E402
-from src.infrastructure.database.session import Base, async_session, build_engine  # noqa: E402
+from src.infrastructure.database.session import Base, async_session  # noqa: E402
 from src.interfaces.main import app  # noqa: E402
 from tests.wiring import PYTEST_PLUGINS  # noqa: E402
 
@@ -98,7 +98,7 @@ async def test_db_url(pg_container):
 @pytest_asyncio.fixture(scope="function")
 async def test_db_engine(test_db_url):
     """Create a SQLAlchemy engine for testing."""
-    engine = build_engine(test_db_url)
+    engine = create_async_engine(test_db_url)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield engine

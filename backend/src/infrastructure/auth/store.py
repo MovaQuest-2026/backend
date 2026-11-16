@@ -12,6 +12,8 @@ default against a database-backed deployment wrote a revision that dropped them.
 is a setting.
 """
 
+from typing import Any
+
 from crudauth import DatabaseStore
 from sqlalchemy import MetaData
 from sqlalchemy.orm import Session, sessionmaker
@@ -38,11 +40,7 @@ def build_store(metadata: MetaData | None = None) -> DatabaseStore:
         reads it, and binding one would open an engine a project that keeps its sessions
         in Redis has no use for.
     """
-    sessions = (
-        get_session_factory()
-        if store_is_selected()
-        else DatabaseSessionFactory(sessionmaker(class_=Session))
-    )
+    sessions: Any = get_session_factory() if store_is_selected() else DatabaseSessionFactory(sessionmaker(class_=Session))
 
     return DatabaseStore(sessions, metadata=metadata if metadata is not None else Base.metadata)
 

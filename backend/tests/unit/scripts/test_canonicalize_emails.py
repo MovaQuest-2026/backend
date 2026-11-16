@@ -1,9 +1,11 @@
 """Bringing the addresses an older deployment stored into the canonical form."""
 
+from typing import cast
+
 import pytest
 from sqlalchemy import inspect, text
+from sqlalchemy.ext.asyncio import create_async_engine
 
-from src.infrastructure.database.session import build_engine
 from tests.unit.scripts.seed_helpers import run_script, script_environment
 
 INDEX = "ix_user_email_lower"
@@ -17,7 +19,7 @@ VALUES (:name, :username, :email, 'hashed', 'https://profileimageurl.com', false
 
 async def _database_from_before_the_index(url: str, *rows: tuple[str, str]) -> None:
     """The tables without the index, holding ``rows`` as an older version stored them."""
-    engine = build_engine(url)
+    engine = create_async_engine(url)
     async with engine.begin() as connection:
         await connection.execute(text(f"DROP INDEX IF EXISTS {INDEX}"))
         await connection.execute(text('DELETE FROM "user"'))
@@ -27,7 +29,7 @@ async def _database_from_before_the_index(url: str, *rows: tuple[str, str]) -> N
 
 
 async def _stored_addresses(url: str) -> list[str]:
-    engine = build_engine(url)
+    engine = create_async_engine(url)
     async with engine.connect() as connection:
         addresses = list((await connection.execute(text('SELECT email FROM "user" ORDER BY username'))).scalars())
     await engine.dispose()
@@ -36,9 +38,12 @@ async def _stored_addresses(url: str) -> list[str]:
 
 
 async def _indexes(url: str) -> list[str]:
-    engine = build_engine(url)
+    engine = create_async_engine(url)
     async with engine.connect() as connection:
-        names = await connection.run_sync(lambda sync: [str(index["name"]) for index in inspect(sync).get_indexes("user")])
+        names = cast(
+            list[str],
+            await connection.run_sync(lambda sync: [str(index["name"]) for index in inspect(sync).get_indexes("user")]),
+        )
     await engine.dispose()
 
     return names
