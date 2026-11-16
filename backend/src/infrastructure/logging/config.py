@@ -179,6 +179,7 @@ def _configure_noisy_loggers() -> None:
         "urllib3.connectionpool": logging.WARNING,
         "requests.packages.urllib3": logging.WARNING,
         "asyncpg": logging.WARNING,
+        "psycopg2": logging.WARNING,
         "sqlalchemy.engine": logging.WARNING,
         "sqlalchemy.dialects": logging.WARNING,
         "sqlalchemy.pool": logging.WARNING,
@@ -208,6 +209,7 @@ def configure_testing_logging() -> None:
     test_loggers = {
         "sqlalchemy.engine": logging.ERROR,
         "asyncpg": logging.ERROR,
+        "psycopg2": logging.ERROR,
     }
 
     for logger_name, level in test_loggers.items():

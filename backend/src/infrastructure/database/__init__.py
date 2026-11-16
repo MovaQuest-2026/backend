@@ -1,10 +1,22 @@
 from typing import Any
 
 from .initialize import close_database
-from .session import Base, async_session, build_engine, dispose_engine, get_engine, get_session_factory, local_session
+from .session import (
+    Base,
+    DatabaseSession,
+    DatabaseSessionFactory,
+    async_session,
+    build_engine,
+    dispose_engine,
+    get_engine,
+    get_session_factory,
+    local_session,
+)
 
 __all__ = [
     "Base",
+    "DatabaseSession",
+    "DatabaseSessionFactory",
     "async_session",
     "build_engine",
     "close_database",
