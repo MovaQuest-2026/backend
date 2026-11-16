@@ -42,9 +42,9 @@ def test_a_database_name_with_a_space_still_round_trips():
 
 
 def test_an_override_is_used_as_given():
-    settings = CoreSettings(DATABASE_URL="postgresql+asyncpg://u:p@h:5432/any?thing")
+    settings = CoreSettings(DATABASE_URL="postgresql+psycopg2://u:p@h:5432/any?thing")
 
-    assert settings.DATABASE_URL == "postgresql+asyncpg://u:p@h:5432/any?thing"
+    assert settings.DATABASE_URL == "postgresql+psycopg2://u:p@h:5432/any?thing"
 
 
 def test_a_percent_in_the_url_survives_the_alembic_config():

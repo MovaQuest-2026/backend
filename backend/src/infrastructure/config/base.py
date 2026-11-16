@@ -82,7 +82,7 @@ class DatabaseSettings(BaseSettings):
     POSTGRES_SERVER: str = config("POSTGRES_SERVER", default="localhost")
     POSTGRES_PORT: int = config("POSTGRES_PORT", default=5432)
     POSTGRES_DB: str = config("POSTGRES_DB", default="postgres")
-    POSTGRES_ASYNC_PREFIX: str = config("POSTGRES_ASYNC_PREFIX", default="postgresql+asyncpg://")
+    POSTGRES_SYNC_PREFIX: str = config("POSTGRES_SYNC_PREFIX", default="postgresql+psycopg2://")
     CREATE_TABLES_ON_STARTUP: bool = config("CREATE_TABLES_ON_STARTUP", default=_creates_tables_by_default(), cast=bool)
 
     POSTGRES_POOL_SIZE: int = config("POSTGRES_POOL_SIZE", default=20, cast=int)
@@ -117,7 +117,7 @@ class DatabaseSettings(BaseSettings):
             raise ValueError(f"POSTGRES_DB cannot contain {' or '.join(unsafe)}; rename the database or set DATABASE_URL.")
 
         return URL.create(
-            drivername=self.POSTGRES_ASYNC_PREFIX.rstrip(":/"),
+            drivername=self.POSTGRES_SYNC_PREFIX.rstrip(":/"),
             username=self.POSTGRES_USER,
             password=self.POSTGRES_PASSWORD,
             host=self.POSTGRES_SERVER,

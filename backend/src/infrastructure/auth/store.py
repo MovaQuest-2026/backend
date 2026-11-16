@@ -14,11 +14,11 @@ is a setting.
 
 from crudauth import DatabaseStore
 from sqlalchemy import MetaData
-from sqlalchemy.ext.asyncio import async_sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from ..config.enums import RateLimiterBackend, SessionBackend
 from ..config.settings import settings
-from ..database.session import Base, get_session_factory
+from ..database.session import Base, DatabaseSessionFactory, get_session_factory
 
 
 def store_is_selected() -> bool:
@@ -38,7 +38,11 @@ def build_store(metadata: MetaData | None = None) -> DatabaseStore:
         reads it, and binding one would open an engine a project that keeps its sessions
         in Redis has no use for.
     """
-    sessions = get_session_factory() if store_is_selected() else async_sessionmaker()
+    sessions = (
+        get_session_factory()
+        if store_is_selected()
+        else DatabaseSessionFactory(sessionmaker(class_=Session))
+    )
 
     return DatabaseStore(sessions, metadata=metadata if metadata is not None else Base.metadata)
 

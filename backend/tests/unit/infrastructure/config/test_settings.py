@@ -102,7 +102,7 @@ class TestSettings:
 
         settings = Settings()
         # Should construct URL from components
-        assert "postgresql+asyncpg://" in settings.DATABASE_URL
+        assert "postgresql+psycopg2://" in settings.DATABASE_URL
         assert "postgres:postgres@localhost:5432" in settings.DATABASE_URL
 
     @patch.dict(os.environ, {"DEBUG": "true"})
@@ -171,7 +171,6 @@ class TestSettingsNothingReads:
             "LOG_SQL_QUERIES",
             "LOG_STRUCTURED_CONTEXT",
             "DEFAULT_CACHE_EXPIRATION",
-            "POSTGRES_SYNC_PREFIX",
             "PRODUCTION_SECURITY_STRICT_MODE",
             "CONTACT_NAME",
             "CONTACT_EMAIL",

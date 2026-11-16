@@ -48,7 +48,7 @@ async def every_declared_table_exists() -> None:
 
     async for session in async_session():
         connection = await session.connection()
-        present = set(await connection.run_sync(lambda sync: inspect(sync).get_table_names()))
+        present = set(inspect(connection._connection).get_table_names())
 
     missing = sorted(declared - present)
     if missing:

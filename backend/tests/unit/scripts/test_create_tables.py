@@ -17,7 +17,6 @@ from tests.unit.scripts.seed_helpers import run_script, script_environment
 BACKEND = Path(__file__).resolve().parents[3]
 
 _COLD_RUN = """
-import asyncio
 from unittest.mock import MagicMock, patch
 
 from src.infrastructure.database import session
@@ -26,20 +25,26 @@ registered = []
 
 
 class _Connection:
-    async def run_sync(self, target):
-        registered.append(sorted(session.Base.metadata.tables))
+    pass
 
 
 class _Transaction:
-    async def __aenter__(self):
+    def __enter__(self):
         return _Connection()
 
-    async def __aexit__(self, *exception):
+    def __exit__(self, *exception):
         return False
 
 
-with patch.object(session, "get_engine", lambda: MagicMock(begin=_Transaction)):
-    asyncio.run(session.create_tables())
+with patch.object(session, "get_engine", lambda: MagicMock(begin=lambda: _Transaction())):
+    with patch.object(
+        session.Base.metadata,
+        "create_all",
+        side_effect=lambda connection: registered.append(sorted(session.Base.metadata.tables)),
+    ):
+        import asyncio
+
+        asyncio.run(session.create_tables())
 
 print("TABLES:" + ",".join(registered[0]))
 """
@@ -64,9 +69,9 @@ async def test_the_script_run_on_its_own_creates_the_tables(test_db_url: str, te
     importable is the path setup at the top of the script.
     """
     engine = build_engine(test_db_url)
-    async with engine.begin() as connection:
-        await connection.run_sync(Base.metadata.drop_all)
-    await engine.dispose()
+    with engine.begin() as connection:
+        Base.metadata.drop_all(connection)
+    engine.dispose()
 
     environment = script_environment(test_db_url)
     del environment["PYTHONPATH"]
@@ -77,8 +82,8 @@ async def test_the_script_run_on_its_own_creates_the_tables(test_db_url: str, te
     assert "Traceback" not in completed.stderr
 
     engine = build_engine(test_db_url)
-    async with engine.connect() as connection:
-        created = await connection.run_sync(lambda sync: sorted(inspect(sync).get_table_names()))
-    await engine.dispose()
+    with engine.connect() as connection:
+        created = sorted(inspect(connection).get_table_names())
+    engine.dispose()
 
     assert created == sorted(Base.metadata.tables)

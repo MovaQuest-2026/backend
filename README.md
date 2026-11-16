@@ -2,7 +2,7 @@
 
 ## Архітектура
 
-Проєкт планується будувати на основі готового шаблону [FastAPI Boilerplate](https://github.com/benavlabs/FastAPI-boilerplate). Шаблон використовується як стартова основа для базових налаштувань автентифікації, авторизації та асинхронної роботи з базою даних. Перед використанням у production його конфігурацію та реалізацію безпеки потрібно окремо перевірити й адаптувати під вимоги MovaQuest.
+Проєкт планується будувати на основі готового шаблону [FastAPI Boilerplate](https://github.com/benavlabs/FastAPI-boilerplate). Шаблон використовується як стартова основа для базових налаштувань автентифікації та авторизації. Для MovaQuest database layer переведений на синхронний SQLAlchemy Engine/Session з PostgreSQL-драйвером `psycopg2`; FastAPI/CRUD-контракт шаблону збережений через сумісний session adapter.
 
 ### Стартовий шаблон у репозиторії
 
@@ -36,16 +36,20 @@ Production deployment планується виконувати на Render:
 
 - **Web Service** запускає Dockerfile зі stage `prod`.
 - **Render Postgres** використовується як production database.
-- `DATABASE_URL` передається через Environment Variables Render; для сервісу всередині Render потрібно використовувати internal database URL.
-- Alembic-міграції запускаються окремою **Pre-Deploy Command**:
+- `DATABASE_URL` передається через Environment Variables Render; для сервісу всередині Render потрібно використовувати internal database URL. Оскільки database layer синхронний, URL має використовувати драйвер `postgresql+psycopg2://`.
+- Для поточного MVP, поки `backend/migrations/versions/` не містить revision-файлів, у Render використовується **Pre-Deploy Command**:
 
   ```bash
-  alembic upgrade head
+  python -m scripts.create_tables
   ```
+
+  Після створення першої Alembic migration цю команду потрібно замінити на `alembic upgrade head`.
 
 - Якщо ASR або інші довгі операції працюватимуть через Taskiq, для них потрібно створити окремий Render **Background Worker**, а не виконувати їх у Web Service.
 
 Dockerfile production stage слухає змінну `PORT`, яку задає Render, і має fallback на порт `8000` для локального запуску.
+
+Приклади конфігурації збережені у `backend/.env.example` для локального середовища та `backend/.env.render.example` для Render. Реальний `backend/.env` використовується тільки локально й ігнорується Git.
 
 ### Основні компоненти
 
@@ -53,7 +57,7 @@ Dockerfile production stage слухає змінну `PORT`, яку задає 
 | --- | --- | --- |
 | Backend | FastAPI (Python) | REST API, бізнес-логіка та інтеграція сервісів |
 | Database | PostgreSQL | Основне зберігання користувачів, курсів, відео, слів і прогресу |
-| ORM та міграції | SQLAlchemy + Alembic або SQLModel | Робота з даними та версіонування схеми бази даних |
+| ORM та міграції | SQLAlchemy + Alembic | Робота з даними та версіонування схеми бази даних |
 | Video delivery | Object Storage + CDN | Масштабована доставка відео; на етапі прототипу — простий video hosting |
 | ASR | faster-whisper | Транскрипція іспанської мови у відео |
 | Spaced repetition | py-fsrs | Планування повторення вивчених слів |
