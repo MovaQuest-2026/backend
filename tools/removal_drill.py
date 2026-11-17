@@ -148,6 +148,12 @@ FEATURES: dict[str, Feature] = {
             ),
         },
     ),
+    "deepgram": Feature(
+        paths=(
+            "backend/src/infrastructure/deepgram",
+            "backend/tests/unit/infrastructure/deepgram",
+        ),
+    ),
 }
 
 REQUIRES = {
@@ -157,6 +163,7 @@ REQUIRES = {
     "tier_limits": ("tiers", "ratelimit"),
     "api_keys": ("accounts",),
     "admin": ("accounts",),
+    "deepgram": ("accounts", "ratelimit"),
 }
 
 PRESETS: dict[str, tuple[str, ...]] = {
@@ -235,6 +242,11 @@ def _wiring_settings(chosen: set[str]) -> str:
             "from ..infrastructure.taskiq.settings import TaskiqSettings",
             "TaskiqSettings",
         ),
+        (
+            "deepgram",
+            "from ..infrastructure.deepgram.settings import DeepgramSettings",
+            "DeepgramSettings",
+        ),
     ]
     imports = ["from ..infrastructure.config.base import CoreSettings"]
     bases = []
@@ -309,6 +321,9 @@ def _wiring_app(chosen: set[str]) -> str:
         imports.append("from ..modules.api_keys.routes import router as api_keys_router")
         collection_mounts.append('RouterMount(api_keys_router, "/api-keys", throttled=True)')
         installers.append("api_keys_install")
+    if "deepgram" in chosen:
+        imports.append("from ..infrastructure.deepgram.routes import router as deepgram_router")
+        collection_mounts.append('RouterMount(deepgram_router, "/transcription", throttled=True)')
     if "rbac" in chosen:
         imports.append("from ..modules.role.routes import permissions_router, user_roles_router")
         imports.append("from ..modules.role.routes import router as roles_router")
