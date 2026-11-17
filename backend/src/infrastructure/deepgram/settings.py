@@ -9,6 +9,7 @@ class DeepgramSettings(BaseSettings):
     """The provider settings and local safety limits for transcription requests."""
 
     DEEPGRAM_ENABLED: bool = config("DEEPGRAM_ENABLED", default=True, cast=bool)
+    DEEPGRAM_PUBLIC_ENABLED: bool = config("DEEPGRAM_PUBLIC_ENABLED", default=False, cast=bool)
     DEEPGRAM_API_KEY: str = config("DEEPGRAM_API_KEY", default="")
     DEEPGRAM_API_URL: str = config("DEEPGRAM_API_URL", default="https://api.deepgram.com")
     DEEPGRAM_MODEL: str = config("DEEPGRAM_MODEL", default="nova-3")

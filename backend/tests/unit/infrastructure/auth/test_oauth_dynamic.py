@@ -54,6 +54,27 @@ def test_oauth_origin_uses_forwarded_host_only_when_proxy_is_trusted(monkeypatch
     assert select_oauth_base_url(request) == "http://localhost:5173"
 
 
+def test_oauth_origin_keeps_allowlisted_local_scheme_after_proxy_tls_termination(monkeypatch):
+    monkeypatch.setattr(settings, "TRUSTED_PROXY_HOPS", 1)
+    monkeypatch.setattr(
+        settings,
+        "OAUTH_ALLOWED_BASE_URLS",
+        "https://backend.example,http://localhost:5173",
+    )
+
+    request = _request(
+        headers={
+            "host": "backend.internal",
+            "x-forwarded-host": "localhost:5173",
+            "x-forwarded-proto": "https",
+        },
+        scheme="https",
+        host="backend.internal",
+    )
+
+    assert select_oauth_base_url(request) == "http://localhost:5173"
+
+
 def test_oauth_origin_rejects_an_unknown_host(monkeypatch):
     monkeypatch.setattr(settings, "TRUSTED_PROXY_HOPS", 0)
     monkeypatch.setattr(settings, "OAUTH_ALLOWED_BASE_URLS", "https://backend.example")
