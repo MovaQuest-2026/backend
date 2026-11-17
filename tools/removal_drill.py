@@ -154,6 +154,12 @@ FEATURES: dict[str, Feature] = {
             "backend/tests/unit/infrastructure/deepgram",
         ),
     ),
+    "social": Feature(
+        paths=(
+            "backend/src/modules/social",
+            "backend/tests/unit/modules/social",
+        ),
+    ),
 }
 
 REQUIRES = {
@@ -164,6 +170,7 @@ REQUIRES = {
     "api_keys": ("accounts",),
     "admin": ("accounts",),
     "deepgram": ("accounts", "ratelimit"),
+    "social": ("accounts", "ratelimit"),
 }
 
 PRESETS: dict[str, tuple[str, ...]] = {
@@ -324,6 +331,9 @@ def _wiring_app(chosen: set[str]) -> str:
     if "deepgram" in chosen:
         imports.append("from ..infrastructure.deepgram.routes import router as deepgram_router")
         collection_mounts.append('RouterMount(deepgram_router, "/transcription", throttled=True)')
+    if "social" in chosen:
+        imports.append("from ..modules.social.routes import router as social_router")
+        collection_mounts.append('RouterMount(social_router, "", throttled=True)')
     if "rbac" in chosen:
         imports.append("from ..modules.role.routes import permissions_router, user_roles_router")
         imports.append("from ..modules.role.routes import router as roles_router")

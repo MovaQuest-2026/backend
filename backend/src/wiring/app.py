@@ -26,6 +26,7 @@ from ..modules.rate_limit.routes import router as rate_limits_router
 from ..modules.rate_limit.routes import user_rate_limits_router
 from ..modules.role.routes import permissions_router, user_roles_router
 from ..modules.role.routes import router as roles_router
+from ..modules.social.routes import router as social_router
 from ..modules.tier.routes import router as tiers_router
 from ..modules.tier.routes import user_tier_router
 from ..modules.user.routes import router as users_router
@@ -40,6 +41,7 @@ ROUTER_MOUNTS: tuple[RouterMount, ...] = (
     RouterMount(auth_router, "/auth", throttled=False),
     RouterMount(api_keys_router, "/api-keys", throttled=True),
     RouterMount(deepgram_router, "/transcription", throttled=True),
+    RouterMount(social_router, "", throttled=True),
     RouterMount(permissions_router, "/permissions", throttled=True),
     RouterMount(roles_router, "/roles", throttled=True),
 )
