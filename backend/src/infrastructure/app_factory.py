@@ -78,6 +78,7 @@ def create_application(
     enable_cors: bool | None = None,
     cors_origins: list[str] | None = None,
     enable_docs_in_production: bool | None = None,
+    public_docs_in_production: bool | None = None,
     docs_production_dependency: Callable[..., Any] | None = None,
     docs_guard: Callable[..., Any] | None = None,
     root_routers: Sequence[APIRouter] = (),
@@ -119,6 +120,11 @@ def create_application(
 
     _enable_docs_in_production = (
         enable_docs_in_production if enable_docs_in_production is not None else settings.ENABLE_DOCS_IN_PRODUCTION
+    )
+    _public_docs_in_production = (
+        public_docs_in_production
+        if public_docs_in_production is not None
+        else settings.PUBLIC_DOCS_IN_PRODUCTION
     )
     _enable_gzip = enable_gzip if enable_gzip is not None else settings.GZIP_ENABLED
     _openapi_prefix = openapi_prefix if openapi_prefix is not None else settings.OPENAPI_PREFIX
@@ -187,8 +193,9 @@ def create_application(
     docs_dependency = None
     if show_docs:
         if is_production and _enable_docs_in_production:
-            docs_dependency = docs_production_dependency if docs_production_dependency is not None else docs_guard
-            show_docs = docs_dependency is not None
+            if not _public_docs_in_production:
+                docs_dependency = docs_production_dependency if docs_production_dependency is not None else docs_guard
+                show_docs = docs_dependency is not None
         elif settings.ENVIRONMENT == EnvironmentOption.STAGING:
             docs_dependency = docs_guard
             show_docs = docs_dependency is not None

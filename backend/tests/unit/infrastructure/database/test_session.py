@@ -4,7 +4,7 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.infrastructure.database.session import async_session
+from src.infrastructure.database.session import DatabaseSession, async_session
 
 pytestmark = pytest.mark.asyncio
 
@@ -15,7 +15,7 @@ class TestDatabaseSession:
     async def test_async_session(self):
         """Test getting an async database session."""
         async for session in async_session():
-            assert isinstance(session, AsyncSession)
+            assert isinstance(session, DatabaseSession)
             break  # Just test that we can get a session
 
     async def test_session_transaction(self, db_session: AsyncSession):

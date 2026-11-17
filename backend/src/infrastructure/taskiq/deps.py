@@ -1,14 +1,14 @@
 """Task dependencies for taskiq integration."""
 
 from collections.abc import AsyncGenerator
-from typing import Annotated
+from typing import Annotated, Any
 
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import NullPool
 from taskiq import TaskiqDepends
 
-from ..database.session import DatabaseSession, DatabaseSessionFactory, build_engine
+from ..database.session import DatabaseSessionFactory, build_engine
 
 _engine: Engine | None = None
 _session_factory: DatabaseSessionFactory | None = None
@@ -23,7 +23,7 @@ def get_taskiq_engine() -> Engine:
     return _engine
 
 
-def get_taskiq_session_factory() -> DatabaseSessionFactory:
+def get_taskiq_session_factory() -> Any:
     """Return the worker's synchronous session factory."""
     global _session_factory
     if _session_factory is None:
@@ -42,7 +42,7 @@ async def dispose_taskiq_engine() -> None:
     _engine.dispose()
 
 
-async def get_db_session() -> AsyncGenerator[DatabaseSession, None]:
+async def get_db_session() -> AsyncGenerator[Any, None]:
     """Get a database session for taskiq tasks.
 
     Provides a database session with proper lifecycle management for
@@ -58,4 +58,4 @@ async def get_db_session() -> AsyncGenerator[DatabaseSession, None]:
             await session.close()
 
 
-DBSession = Annotated[DatabaseSession, TaskiqDepends(get_db_session)]
+DBSession = Annotated[Any, TaskiqDepends(get_db_session)]

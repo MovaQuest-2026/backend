@@ -173,23 +173,21 @@ def get_engine() -> Engine:
     return _engine
 
 
-def get_session_factory() -> DatabaseSessionFactory:
+def get_session_factory() -> Any:
     """Return the application's shared synchronous session factory."""
     global _session_factory
     if _session_factory is None:
-        _session_factory = DatabaseSessionFactory(
-            sessionmaker(bind=get_engine(), class_=Session, expire_on_commit=False)
-        )
+        _session_factory = DatabaseSessionFactory(sessionmaker(bind=get_engine(), class_=Session, expire_on_commit=False))
 
     return _session_factory
 
 
-def local_session() -> DatabaseSession:
+def local_session() -> Any:
     """Open a synchronous database session through the compatibility facade."""
     return get_session_factory()()
 
 
-async def async_session() -> AsyncGenerator[DatabaseSession, None]:
+async def async_session() -> AsyncGenerator[Any, None]:
     """Yield a per-request synchronous session through FastAPI's async API."""
     session = local_session()
     try:
