@@ -14,7 +14,7 @@ from .schemas import TranscriptionResponse, TranscriptionWord
 
 router = APIRouter(
     tags=["Speech-to-text"],
-    dependencies=[Depends(get_session_principal)],
+    dependencies=[] if settings.DEEPGRAM_PUBLIC_ENABLED else [Depends(get_session_principal)],
 )
 
 _ALLOWED_AUDIO_TYPES = {"application/octet-stream", "video/mp4"}
