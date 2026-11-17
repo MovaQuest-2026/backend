@@ -7,6 +7,7 @@ comes last, so a feature can override a core default rather than the other way r
 from ..infrastructure.auth.settings import AccountsSettings
 from ..infrastructure.cache.settings import CacheSettings
 from ..infrastructure.config.base import CoreSettings
+from ..infrastructure.deepgram.settings import DeepgramSettings
 from ..infrastructure.ratelimit.settings import RateLimitSettings
 from ..infrastructure.taskiq.settings import TaskiqSettings
 from ..interfaces.admin.settings import SQLAdminSettings
@@ -22,6 +23,7 @@ class Settings(
     SQLAdminSettings,
     CacheSettings,
     TaskiqSettings,
+    DeepgramSettings,
     CoreSettings,
 ):
     """The settings of every selected feature, on top of the core."""

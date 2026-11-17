@@ -31,6 +31,7 @@ from ..dependencies import AsyncSessionDep
 from ..logging import get_logger
 from .dependencies import get_optional_principal, get_session_principal
 from .deps import OAuth2FormDep, a_redirect_a_link_can_carry, body_a_database_can_hold
+from .oauth_dynamic import bind_oauth_request
 from .setup import auth as crud_auth
 from .setup import session_transport
 
@@ -84,7 +85,10 @@ if crud_auth.emails is not None:
 def _with_the_redirect_guard(source: APIRouter) -> APIRouter:
     """``source``'s routes, each behind the guard on where a flow may send the browser."""
     guarded = APIRouter()
-    guarded.include_router(source, dependencies=[Depends(a_redirect_a_link_can_carry)])
+    guarded.include_router(
+        source,
+        dependencies=[Depends(a_redirect_a_link_can_carry), Depends(bind_oauth_request)],
+    )
 
     return guarded
 

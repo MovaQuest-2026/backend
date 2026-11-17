@@ -16,6 +16,7 @@ from ..infrastructure.auth.routes import router as auth_router
 from ..infrastructure.auth.setup import lifecycle as accounts_lifecycle
 from ..infrastructure.cache.initialize import lifecycle as cache_lifecycle
 from ..infrastructure.composition import Lifecycle, RouterMount
+from ..infrastructure.deepgram.routes import router as deepgram_router
 from ..infrastructure.ratelimit.dependency import api_rate_limit_dependency
 from ..infrastructure.taskiq.lifecycle import lifecycle as taskiq_lifecycle
 from ..interfaces.admin.initialize import install as admin_install
@@ -38,6 +39,7 @@ ROUTER_MOUNTS: tuple[RouterMount, ...] = (
     RouterMount(rate_limits_router, "/rate-limits", throttled=True),
     RouterMount(auth_router, "/auth", throttled=False),
     RouterMount(api_keys_router, "/api-keys", throttled=True),
+    RouterMount(deepgram_router, "/transcription", throttled=True),
     RouterMount(permissions_router, "/permissions", throttled=True),
     RouterMount(roles_router, "/roles", throttled=True),
 )

@@ -19,6 +19,7 @@ from typing import Any
 
 from crudauth import AuthHooks, CookieConfig, CRUDAuth, EmailConfig, NewUserContext, OAuthCredentials, SessionTransport
 from crudauth.constants import DEFAULT_FRESH_SIGN_IN_SECONDS
+from crudauth.oauth.factory import OAuthProviderFactory
 from crudauth.ratelimit import LockoutConfig
 
 from ...modules.user.constants import NAME_MAX_LENGTH
@@ -32,6 +33,11 @@ from ..database.session import async_session
 from .audit import record_a_lockout, record_a_refused_login
 from .evictions import end_every_session_through
 from .limiter import build_rate_limiter, rate_limiter_redis_client
+from .oauth_dynamic import (
+    RequestAwareGitHubOAuthProvider,
+    RequestAwareGoogleOAuthProvider,
+    RequestAwareRedirect,
+)
 from .oauth_profile import refresh_the_provider_profile
 from .password_policy import password_policy
 from .store import database_store
@@ -121,6 +127,9 @@ def _oauth_providers() -> dict[str, OAuthCredentials]:
 session_transport = _session_transport()
 email_config = EmailConfig(sender=EMAIL_SENDER, frontend_url=settings.FRONTEND_URL.rstrip("/"))
 
+OAuthProviderFactory.register_provider("google", RequestAwareGoogleOAuthProvider)
+OAuthProviderFactory.register_provider("github", RequestAwareGitHubOAuthProvider)
+
 auth = CRUDAuth(
     session=async_session,
     user_model=User,
@@ -153,6 +162,7 @@ auth = CRUDAuth(
         "authorize_path": "/{provider}",
         "callback_path": "/callback/{provider}",
     },
+    oauth_default_redirect=RequestAwareRedirect(settings.FRONTEND_URL.rstrip("/")),
     oauth_response_mode="redirect",
 )
 

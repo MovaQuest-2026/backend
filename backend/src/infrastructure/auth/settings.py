@@ -53,6 +53,8 @@ class AuthSettings(BaseSettings):
     OAUTH_GITHUB_CLIENT_ID: str = config("OAUTH_GITHUB_CLIENT_ID", default="")
     OAUTH_GITHUB_CLIENT_SECRET: str = config("OAUTH_GITHUB_CLIENT_SECRET", default="")
     OAUTH_REDIRECT_BASE_URL: str = config("OAUTH_REDIRECT_BASE_URL", default="http://localhost:8000")
+    OAUTH_ALLOWED_BASE_URLS: str = config("OAUTH_ALLOWED_BASE_URLS", default="")
+    FRONTEND_ALLOWED_URLS: str = config("FRONTEND_ALLOWED_URLS", default="")
 
     SESSION_REDIS_HOST: str = Field(
         default=config("SESSION_REDIS_HOST", default=config("CACHE_REDIS_HOST", default="localhost")),
