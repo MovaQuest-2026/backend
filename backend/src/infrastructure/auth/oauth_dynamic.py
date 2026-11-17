@@ -52,6 +52,11 @@ def _same_origin(left: str, right: str) -> bool:
     return left.rstrip("/").casefold() == right.rstrip("/").casefold()
 
 
+def _origin_host(origin: str) -> str:
+    """Return the normalized host and port from an absolute configured origin."""
+    return urlsplit(origin).netloc.casefold()
+
+
 def _forwarded_value(request: Request, name: str) -> str | None:
     """Read proxy headers only when the deployment explicitly trusts a proxy hop."""
     if settings.TRUSTED_PROXY_HOPS <= 0:
@@ -67,11 +72,11 @@ def select_oauth_base_url(request: Request) -> str:
         return settings.OAUTH_REDIRECT_BASE_URL.rstrip("/")
 
     host = _forwarded_value(request, "x-forwarded-host") or request.headers.get("host", "")
-    scheme = _forwarded_value(request, "x-forwarded-proto") or request.url.scheme
-    current_origin = f"{scheme}://{host}".rstrip("/")
-
     for origin in allowed:
-        if _same_origin(origin, current_origin):
+        # Render can expose a local Vite request as HTTPS after TLS termination.
+        # The allowlist is authoritative for the scheme; the request host selects
+        # which configured origin is used for Google's callback.
+        if _origin_host(origin) == host.casefold():
             return origin
 
     raise BadRequestException("This host is not allowed for OAuth.")
