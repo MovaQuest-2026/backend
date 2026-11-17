@@ -164,6 +164,7 @@ class APIDocSettings(BaseSettings):
     """API documentation settings."""
 
     ENABLE_DOCS_IN_PRODUCTION: bool = config("ENABLE_DOCS_IN_PRODUCTION", default=False, cast=bool)
+    PUBLIC_DOCS_IN_PRODUCTION: bool = config("PUBLIC_DOCS_IN_PRODUCTION", default=False, cast=bool)
     OPENAPI_PREFIX: str = config("OPENAPI_PREFIX", default="")
     DOCS_URL: str = config("DOCS_URL", default="/docs")
     REDOC_URL: str = config("REDOC_URL", default="/redoc")

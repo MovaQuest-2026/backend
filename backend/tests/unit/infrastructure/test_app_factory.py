@@ -171,10 +171,15 @@ def _create_app(
     environment: EnvironmentOption,
     enable_docs_in_production: bool = False,
     docs_guard: Callable[..., Any] | None = _refuse,
+    public_docs_in_production: bool = False,
 ) -> FastAPI:
     return app_factory.create_application(
         router=APIRouter(),
-        settings=Settings(ENVIRONMENT=environment, ENABLE_DOCS_IN_PRODUCTION=enable_docs_in_production),
+        settings=Settings(
+            ENVIRONMENT=environment,
+            ENABLE_DOCS_IN_PRODUCTION=enable_docs_in_production,
+            PUBLIC_DOCS_IN_PRODUCTION=public_docs_in_production,
+        ),
         docs_guard=docs_guard,
     )
 
@@ -203,6 +208,17 @@ async def test_docs_access_for_anonymous_requests(environment, enable_docs_in_pr
     app = _create_app(environment, enable_docs_in_production)
 
     assert await _docs_statuses(app) == [expected_status] * len(DOCS_PATHS)
+
+
+@pytest.mark.asyncio
+async def test_production_docs_can_be_public_when_explicitly_enabled():
+    app = _create_app(
+        EnvironmentOption.PRODUCTION,
+        enable_docs_in_production=True,
+        public_docs_in_production=True,
+    )
+
+    assert await _docs_statuses(app) == [200] * len(DOCS_PATHS)
 
 
 @pytest.mark.asyncio
