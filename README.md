@@ -37,13 +37,16 @@ Production deployment планується виконувати на Render:
 - **Web Service** запускає Dockerfile зі stage `prod`.
 - **Render Postgres** використовується як production database.
 - `DATABASE_URL` передається через Environment Variables Render; для сервісу всередині Render потрібно використовувати internal database URL. Оскільки database layer синхронний, URL має використовувати драйвер `postgresql+psycopg2://`.
-- Для поточного MVP, поки `backend/migrations/versions/` не містить revision-файлів, у Render використовується **Pre-Deploy Command**:
+- Для Render використовується **Pre-Deploy Command** з міграціями:
 
   ```bash
-  python -m scripts.create_tables
+  CONFIRM_PRODUCTION_MIGRATION=yes alembic upgrade head
   ```
 
-  Після створення першої Alembic migration цю команду потрібно замінити на `alembic upgrade head`.
+  Для вже існуючої бази, яку раніше створював `scripts.create_tables`, спочатку виконайте
+  `CONFIRM_PRODUCTION_MIGRATION=yes alembic stamp ae2deece1038`, а потім `alembic upgrade head`. Якщо база ще не містить
+  актуальних таблиць профілю або прогресу, спочатку застосуйте їх через `scripts.create_tables`
+  або окремий schema rollout, а вже після цього stamp-айте baseline.
 
 - Якщо ASR або інші довгі операції працюватимуть через Taskiq, для них потрібно створити окремий Render **Background Worker**, а не виконувати їх у Web Service.
 
