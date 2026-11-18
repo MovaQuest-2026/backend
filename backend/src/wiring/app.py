@@ -22,6 +22,7 @@ from ..infrastructure.taskiq.lifecycle import lifecycle as taskiq_lifecycle
 from ..interfaces.admin.initialize import install as admin_install
 from ..modules.api_keys.install import install as api_keys_install
 from ..modules.api_keys.routes import router as api_keys_router
+from ..modules.progress.routes import router as progress_router
 from ..modules.rate_limit.routes import router as rate_limits_router
 from ..modules.rate_limit.routes import user_rate_limits_router
 from ..modules.role.routes import permissions_router, user_roles_router
@@ -41,6 +42,7 @@ ROUTER_MOUNTS: tuple[RouterMount, ...] = (
     RouterMount(auth_router, "/auth", throttled=False),
     RouterMount(api_keys_router, "/api-keys", throttled=True),
     RouterMount(deepgram_router, "/transcription", throttled=True),
+    RouterMount(progress_router, "", throttled=True),
     RouterMount(social_router, "", throttled=True),
     RouterMount(permissions_router, "/permissions", throttled=True),
     RouterMount(roles_router, "/roles", throttled=True),
