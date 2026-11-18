@@ -166,6 +166,12 @@ FEATURES: dict[str, Feature] = {
             "backend/tests/unit/modules/progress",
         ),
     ),
+    "profile": Feature(
+        paths=(
+            "backend/src/modules/profile",
+            "backend/tests/unit/modules/profile",
+        ),
+    ),
 }
 
 REQUIRES = {
@@ -178,6 +184,7 @@ REQUIRES = {
     "deepgram": ("accounts", "ratelimit"),
     "social": ("accounts", "ratelimit"),
     "progress": ("accounts", "ratelimit"),
+    "profile": ("accounts", "ratelimit"),
 }
 
 PRESETS: dict[str, tuple[str, ...]] = {
@@ -341,6 +348,9 @@ def _wiring_app(chosen: set[str]) -> str:
     if "progress" in chosen:
         imports.append("from ..modules.progress.routes import router as progress_router")
         collection_mounts.append('RouterMount(progress_router, "", throttled=True)')
+    if "profile" in chosen:
+        imports.append("from ..modules.profile.routes import router as profile_router")
+        collection_mounts.append('RouterMount(profile_router, "", throttled=True)')
     if "social" in chosen:
         imports.append("from ..modules.social.routes import router as social_router")
         collection_mounts.append('RouterMount(social_router, "", throttled=True)')
