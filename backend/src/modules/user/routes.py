@@ -1,7 +1,8 @@
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, Response, status
 from fastcrud import PaginatedListResponse, compute_offset, paginated_response
+from sqlalchemy import delete
 
 from ...infrastructure.auth.authorization import load_permissions, require_permissions
 from ...infrastructure.auth.deps import (
@@ -12,10 +13,13 @@ from ...infrastructure.auth.deps import (
     FreshSessionPrincipalDep,
 )
 from ...infrastructure.auth.scope import carries_a_scope
+from ...infrastructure.auth.setup import session_transport
 from ...infrastructure.dependencies import AsyncSessionDep
+from ..api_keys.models import APIKey, KeyUsage
 from ..common.pagination import ItemsPerPageDep, PageDep
 from .dependencies import UserServiceDep
 from .exceptions import EmailAlreadyRegisteredError
+from .models import User
 from .schemas import (
     UserCreate,
     UserProfileRead,
@@ -138,6 +142,20 @@ async def get_current_user_profile(
 ) -> dict[str, Any]:
     """Get current authenticated user's profile."""
     return current_user
+
+
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT, summary="Permanently delete my account")
+async def permanently_delete_my_account(current_user: CurrentUserDep, db: AsyncSessionDep) -> Response:
+    """Delete the signed-in account and its FK-cascaded data, ending server-side sessions first."""
+    manager = session_transport.manager
+    if manager is not None:
+        await manager.revoke_all(current_user["id"])
+    # These legacy foreign keys do not declare ON DELETE CASCADE in the baseline migration.
+    await db.execute(delete(KeyUsage).where(KeyUsage.user_id == current_user["id"]))
+    await db.execute(delete(APIKey).where(APIKey.user_id == current_user["id"]))
+    await db.execute(delete(User).where(User.id == current_user["id"]))
+    await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get(

@@ -209,6 +209,7 @@ class AppSettings(BaseSettings):
     APP_DESCRIPTION: str = config("APP_DESCRIPTION", default="")
     DEBUG: bool = config("DEBUG", default=False, cast=bool)
     VERSION: str = config("VERSION", default="0.1.0")
+    MEDIA_MAX_FILE_BYTES: int = config("MEDIA_MAX_FILE_BYTES", default=524_288_000, cast=int)
 
 
 class EmailSettings(BaseSettings):
