@@ -1,6 +1,8 @@
 """Authenticated speech-to-text endpoints."""
 
 import re
+from collections.abc import Sequence
+from difflib import SequenceMatcher
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
@@ -10,7 +12,13 @@ from ..auth.dependencies import get_session_principal
 from ..http_exceptions import HTTPException
 from .dependencies import DeepgramServiceDep
 from .errors import DeepgramError
-from .schemas import TranscriptionResponse, TranscriptionWord
+from .schemas import (
+    PronunciationFeedback,
+    PronunciationWordFeedback,
+    TranscriptionResponse,
+    TranscriptionWord,
+)
+from .service import DeepgramWord
 
 router = APIRouter(
     tags=["Speech-to-text"],
@@ -28,6 +36,7 @@ _ALLOWED_AUDIO_TYPES = {"application/octet-stream", "video/mp4"}
     description=(
         "Transcribes a short audio recording with Deepgram Nova-3. "
         "Send the expected answer as repeated `hint` multipart fields; the backend forwards them as keyterms. "
+        "Optionally send `expected_text` to receive a confidence-based practice signal. "
         "An empty transcript means that the recording was silent or unintelligible."
     ),
     responses={
@@ -45,6 +54,10 @@ async def transcribe_audio(
     hints: Annotated[
         list[str] | None,
         Form(alias="hint", description="Expected word or accepted variant; repeat the field for multiple terms"),
+    ] = None,
+    expected_text: Annotated[
+        str | None,
+        Form(max_length=1000, description="Phrase the learner was expected to pronounce"),
     ] = None,
 ) -> TranscriptionResponse:
     """Validate a bounded upload and return a provider-independent transcription result."""
@@ -69,6 +82,7 @@ async def transcribe_audio(
     except DeepgramError as error:
         raise HTTPException(status_code=error.status_code, detail=error.detail) from error
 
+    feedback = _pronunciation_feedback(expected_text, result.transcript, result.words) if expected_text else None
     return TranscriptionResponse(
         transcript=result.transcript,
         confidence=result.confidence,
@@ -80,6 +94,7 @@ async def transcribe_audio(
             TranscriptionWord(word=word.word, start=word.start, end=word.end, confidence=word.confidence)
             for word in result.words
         ],
+        pronunciation_feedback=feedback,
     )
 
 
@@ -94,3 +109,49 @@ def _normalize_keyterms(values: list[str]) -> list[str]:
             normalized.append(term)
             seen.add(key)
     return normalized
+
+
+def _tokens(value: str) -> list[str]:
+    """Normalize a phrase for a language-neutral, punctuation-insensitive comparison."""
+    return re.findall(r"[\wÀ-ÿ']+", value.casefold())
+
+
+def _pronunciation_feedback(
+    expected_text: str,
+    transcript: str,
+    words: Sequence[DeepgramWord],
+) -> PronunciationFeedback:
+    """Build an explainable practice score from token similarity and Deepgram confidence."""
+    expected = _tokens(expected_text)
+    recognized = _tokens(transcript)
+    similarity = SequenceMatcher(a=expected, b=recognized, autojunk=False).ratio() if expected else 0.0
+    confidences = [word.confidence for word in words if word.confidence is not None]
+    confidence = sum(confidences) / len(confidences) if confidences else similarity
+    score = round((similarity * 0.7) + (confidence * 0.3), 3)
+
+    matcher = SequenceMatcher(a=expected, b=recognized, autojunk=False)
+    feedback_words: list[PronunciationWordFeedback] = []
+    for tag, start_expected, end_expected, start_recognized, end_recognized in matcher.get_opcodes():
+        expected_part = expected[start_expected:end_expected]
+        recognized_part = recognized[start_recognized:end_recognized]
+        for index in range(max(len(expected_part), len(recognized_part))):
+            expected_word = expected_part[index] if index < len(expected_part) else None
+            recognized_word = recognized_part[index] if index < len(recognized_part) else None
+            recognized_index = start_recognized + index
+            word_confidence = words[recognized_index].confidence if recognized_index < len(words) else None
+            feedback_words.append(
+                PronunciationWordFeedback(
+                    expected=expected_word,
+                    recognized=recognized_word,
+                    confidence=word_confidence,
+                    matched=tag == "equal",
+                )
+            )
+
+    status = "not_recognized" if not recognized else "good" if score >= 0.85 else "needs_practice"
+    return PronunciationFeedback(
+        expected_text=expected_text.strip(),
+        score=score,
+        status=status,
+        words=feedback_words,
+    )

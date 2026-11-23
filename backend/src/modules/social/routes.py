@@ -3,16 +3,17 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Path, Query, Response, status
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 
 from ...infrastructure.auth.deps import CurrentUserDep, OptionalUserDep
 from ...infrastructure.dependencies import AsyncSessionDep
 from ...infrastructure.http_exceptions import BadRequestException, NotFoundException
 from ..user.models import User
-from .models import LessonComment, LessonReaction, LessonShare
+from .models import LessonComment, LessonCommentReport, LessonReaction, LessonShare
 from .schemas import (
     CommentCreate,
+    CommentReportCreate,
     CommentsResponse,
     LessonCommentResponse,
     LessonStatsResponse,
@@ -98,7 +99,7 @@ async def get_lesson_stats(lesson_id: LessonId, db: AsyncSessionDep) -> LessonSt
     likes = await _count_reactions(db, lesson_id, "like")
     saves = await _count_reactions(db, lesson_id, "save")
     comments = await db.scalar(
-        select(func.count(LessonComment.id)).where(LessonComment.lesson_id == lesson_id)
+        select(func.count(LessonComment.id)).where(LessonComment.lesson_id == lesson_id, LessonComment.is_hidden.is_(False))
     )
     shares = await db.scalar(select(func.count(LessonShare.id)).where(LessonShare.lesson_id == lesson_id))
     return LessonStatsResponse(likes=likes, comments=int(comments or 0), saves=saves, shares=int(shares or 0))
@@ -126,7 +127,7 @@ async def get_lesson_comments(
     cursor_id = _parse_cursor(cursor)
     statement = (
         select(LessonComment,)
-        .where(LessonComment.lesson_id == lesson_id)
+        .where(LessonComment.lesson_id == lesson_id, LessonComment.is_hidden.is_(False))
         .order_by(LessonComment.id.desc())
         .limit(limit + 1)
     )
@@ -167,6 +168,44 @@ async def delete_comment(comment_id: CommentId, current_user: CurrentUserDep, db
         raise NotFoundException(detail="Comment not found")
     await db.delete(comment)
     await db.commit()
+
+
+@router.post("/comments/{comment_id}/report", status_code=status.HTTP_204_NO_CONTENT, summary="Report a comment")
+async def report_comment(
+    comment_id: CommentId,
+    payload: CommentReportCreate,
+    current_user: CurrentUserDep,
+    db: AsyncSessionDep,
+) -> Response:
+    """Record one report per account and hide a comment once three accounts report it."""
+    comment = await db.get(LessonComment, comment_id)
+    if comment is None:
+        raise NotFoundException(detail="Comment not found")
+    db.add(
+        LessonCommentReport(
+            comment_id=comment_id,
+            user_id=current_user["id"],
+            reason=payload.reason,
+            details=payload.details,
+        )
+    )
+    try:
+        await db.commit()
+    except IntegrityError:
+        # A duplicate report is idempotent and cannot increase the moderation count.
+        await db.rollback()
+
+    reports = await db.scalar(
+        select(func.count(LessonCommentReport.id)).where(LessonCommentReport.comment_id == comment_id)
+    )
+    if int(reports or 0) >= 3:
+        await db.execute(
+            update(LessonComment)
+            .where(LessonComment.id == comment_id, LessonComment.is_hidden.is_(False))
+            .values(is_hidden=True)
+        )
+        await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/lessons/{lesson_id}/share", status_code=status.HTTP_204_NO_CONTENT, summary="Record a lesson share")

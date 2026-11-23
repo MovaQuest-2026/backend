@@ -32,6 +32,16 @@ class CommentCreate(EncodableText):
         return value.strip() if isinstance(value, str) else value
 
 
+class CommentReportCreate(EncodableText):
+    reason: Literal["spam", "abuse", "other"]
+    details: Annotated[str | None, Field(max_length=1000)] = None
+
+    @field_validator("details", mode="before")
+    @classmethod
+    def trim_details(cls, value: object) -> object:
+        return value.strip() if isinstance(value, str) else value
+
+
 class LessonCommentResponse(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 

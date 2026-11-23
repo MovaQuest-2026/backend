@@ -345,6 +345,9 @@ def _wiring_app(chosen: set[str]) -> str:
     if "deepgram" in chosen:
         imports.append("from ..infrastructure.deepgram.routes import router as deepgram_router")
         collection_mounts.append('RouterMount(deepgram_router, "/transcription", throttled=True)')
+    if "accounts" in chosen:
+        imports.append("from ..infrastructure.content.routes import router as content_router")
+        collection_mounts.append('RouterMount(content_router, "/content", throttled=True)')
     if "progress" in chosen:
         imports.append("from ..modules.progress.routes import router as progress_router")
         collection_mounts.append('RouterMount(progress_router, "", throttled=True)')
@@ -492,15 +495,17 @@ def _wiring_tables(chosen: set[str]) -> str:
 def _wiring_transports(chosen: set[str]) -> str:
     """The authentication transports registered beside the session one."""
     docstring = '"""The authentication transports this project registers beside the session one."""\n\n'
-    if "api_keys" not in chosen:
+    if "accounts" not in chosen:
         return f"{docstring}from crudauth import Transport\n\nEXTRA_TRANSPORTS: tuple[Transport, ...] = ()\n"
 
-    return (
-        f"{docstring}"
-        "from crudauth import Transport\n\n"
-        "from ..modules.api_keys.transport import APIKeyTransport\n\n"
-        "EXTRA_TRANSPORTS: tuple[Transport, ...] = (APIKeyTransport(),)\n"
-    )
+    transports = ["BearerTransport(access_ttl=3600, refresh_ttl_days=60, refresh=\"body\")"]
+    imports = ["from crudauth import BearerTransport, Transport"]
+    if "api_keys" in chosen:
+        imports.append("from ..modules.api_keys.transport import APIKeyTransport")
+        transports.append("APIKeyTransport()")
+    import_lines = "\n".join(imports)
+    transport_values = ", ".join(transports)
+    return f"{docstring}{import_lines}\n\nEXTRA_TRANSPORTS: tuple[Transport, ...] = ({transport_values},)\n"
 
 
 def _wiring_cache(chosen: set[str]) -> str:
@@ -542,6 +547,9 @@ def _wiring_admin(chosen: set[str]) -> str:
     if "accounts" in chosen:
         imports.append("from ..modules.user.admin import UserAdmin")
         views.append("UserAdmin")
+    if "social" in chosen:
+        imports.append("from ..modules.social.admin import LessonCommentAdmin, LessonCommentReportAdmin")
+        views.extend(["LessonCommentAdmin", "LessonCommentReportAdmin"])
     if "tiers" in chosen:
         imports.append("from ..modules.tier.admin import TierAdmin")
         views.append("TierAdmin")

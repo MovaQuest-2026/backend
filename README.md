@@ -52,6 +52,12 @@ Production deployment планується виконувати на Render:
 
 Dockerfile production stage слухає змінну `PORT`, яку задає Render, і має fallback на порт `8000` для локального запуску.
 
+Відео зберігаються у PostgreSQL у таблиці `media_videos` як `BYTEA`; локальна файлова система Render для цього не використовується.
+Content API має `POST /api/v1/content/videos?name=lesson-1.mp4` (тільки superuser),
+`GET /api/v1/content/videos/{name}` для потокової роздачі та `DELETE /api/v1/content/videos/{name}`.
+Розмір upload обмежується `MEDIA_MAX_FILE_BYTES`, а stream endpoint підтримує один HTTP byte range.
+Для цього варіанту потрібно збільшити план/диск Render Postgres так, щоб у базі вистачило місця.
+
 Приклади конфігурації збережені у `backend/.env.example` для локального середовища та `backend/.env.render.example` для Render. Реальний `backend/.env` використовується тільки локально й ігнорується Git.
 
 ### Основні компоненти
@@ -65,6 +71,23 @@ Dockerfile production stage слухає змінну `PORT`, яку задає 
 | ASR | faster-whisper | Транскрипція іспанської мови у відео |
 | Spaced repetition | py-fsrs | Планування повторення вивчених слів |
 
+### Мобільна автентифікація та адмінпанель
+
+`POST /api/v1/auth/login` з заголовком `X-Client: mobile` повертає access/refresh JWT без cookie. Access-токен
+діє 1 годину; refresh-токен — 60 днів, зберігається на бекенді лише як SHA-256 хеш і одноразово ротуються через
+`POST /api/v1/auth/refresh`. Мобільні запити до існуючих захищених endpoint-ів використовують
+`Authorization: Bearer <access_token>`. Веблогін без цього заголовка лишається cookie-based. `POST /api/v1/auth/logout`
+з Bearer може прийняти `{"refresh_token": "…"}` і відкликати саме цей refresh-токен.
+
+Мобільний Google OAuth запускається через `GET /api/v1/auth/oauth/mobile/google?redirect_uri=movaquest%3A%2F%2Fauth%2Fcallback`
+(для dev-збірки дозволено `exp+movaquest://auth/callback`). Google повертає користувача на штатний backend callback,
+який завершує web-сесію у системному браузері; backend перенаправляє на deep link з одноразовим кодом на 60 секунд.
+Застосунок обмінює його через `POST /api/v1/auth/oauth/exchange` з `X-Client: mobile` і тілом `{"code":"…"}`.
+Google redirect URI не змінюється. Помилки OAuth від callback поки ведуть на стандартний frontend redirect.
+
+Адмінпанель і керування користувачами вже реалізовані. Для production панель монтується тільки коли задані
+`ADMIN_ENABLED=true`, `ADMIN_USERNAME` та сильний `ADMIN_PASSWORD`; URL за замовчуванням — `/admin`.
+
 ### Потік обробки відео
 
 1. Відео завантажується у video hosting або object storage.
@@ -72,6 +95,21 @@ Dockerfile production stage слухає змінну `PORT`, яку задає 
 3. Backend зберігає метадані відео та результати транскрипції у PostgreSQL.
 4. На основі транскрипції формуються слова або навчальні одиниці.
 5. `py-fsrs` розраховує наступну дату повторення для кожної вивченої одиниці.
+
+### Deepgram: фідбек по вимові
+
+`POST /api/v1/transcription` приймає multipart `audio`, повторювані `hint` і необов'язковий
+`expected_text`. Відповідь містить транскрипцію, загальний та word-level confidence, таймінги
+і `pronunciation_feedback` з token-level збігами та score. Score є explainable heuristic для
+навчального фідбеку на основі схожості тексту й confidence Deepgram; Deepgram сам по собі не
+повертає фонемний діагноз вимови. Для точнішої фонемної оцінки потрібен окремий pronunciation
+assessment engine або спеціально підібрана модель.
+
+`POST /api/v1/transcription` уже повертає транскрипт, загальну confidence, а також confidence і часові мітки
+для кожного розпізнаного слова. Це корисний сигнал про впевненість ASR, але він не є оцінкою якості вимови або
+фонетичним порівнянням із еталоном. Deepgram Nova-3 STT не надає окремий pronunciation score; для навчального
+фідбеку потрібно порівнювати транскрипт з очікуваною фразою у застосунку або підключити pronunciation assessment.
+Endpoint приймає `audio/mp4`/`audio/m4a` разом з іншими `audio/*` MIME типами та передає отриманий MIME у Deepgram.
 
 ### Еволюція video delivery
 
