@@ -58,6 +58,17 @@ Content API має `POST /api/v1/content/videos?name=lesson-1.mp4` (тільки
 Розмір upload обмежується `MEDIA_MAX_FILE_BYTES`, а stream endpoint підтримує один HTTP byte range.
 Для цього варіанту потрібно збільшити план/диск Render Postgres так, щоб у базі вистачило місця.
 
+Каталог уроків доступний через `GET /api/v1/content/lessons` і повертається у frontend-сумісному форматі
+з `title`/`description` для `es`, `en`, `uk`, `durationSec`, `cover`, `comingSoon` та optional `videoUrl`.
+Імпорт наданого frontend `index.json` виконується ідемпотентно:
+
+```powershell
+cd backend
+uv run python scripts/import_lesson_catalog.py "C:\path\to\index.json"
+```
+
+Відсутні у джерелі уроки не видаляються автоматично. Відеофайли імпортуються окремо після перевірки архіву.
+
 Приклади конфігурації збережені у `backend/.env.example` для локального середовища та `backend/.env.render.example` для Render. Реальний `backend/.env` використовується тільки локально й ігнорується Git.
 
 ### Основні компоненти
@@ -87,6 +98,7 @@ Google redirect URI не змінюється. Помилки OAuth від callb
 
 Адмінпанель і керування користувачами вже реалізовані. Для production панель монтується тільки коли задані
 `ADMIN_ENABLED=true`, `ADMIN_USERNAME` та сильний `ADMIN_PASSWORD`; URL за замовчуванням — `/admin`.
+У панелі доступні уроки, відео, користувачі, ролі, tiers, коментарі/reports та read-only audit log.
 
 ### Потік обробки відео
 

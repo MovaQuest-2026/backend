@@ -131,11 +131,17 @@ Score є heuristic на основі текстової схожості та De
 API:
 
 ```http
+GET  /api/v1/content/lessons
+GET  /api/v1/content/lessons/{lesson_id}
 POST /api/v1/content/videos?name=lesson-1.mp4
 GET  /api/v1/content/videos
 GET  /api/v1/content/videos/lesson-1.mp4
 DELETE /api/v1/content/videos/lesson-1.mp4
 ```
+
+`GET /api/v1/content/lessons` повертає каталог у форматі frontend `index.json`.
+Поточний каталог можна імпортувати скриптом `scripts/import_lesson_catalog.py`; імпорт оновлює
+існуючі записи за `id` і не видаляє відсутні записи.
 
 Upload/list/delete доступні тільки superuser. Multipart field для upload — `video`.
 
@@ -151,7 +157,9 @@ Admin panel:
 https://backend-hb2j.onrender.com/admin
 ```
 
-Production admin credentials уже налаштовані в Render. У панелі доступні користувачі, ролі, tiers, коментарі та reports.
+Production admin credentials уже налаштовані в Render. У панелі доступні уроки, відео, користувачі,
+ролі, tiers, коментарі/reports та read-only audit log. Upload відео залишається bounded Content API;
+адмінка дозволяє перевіряти metadata і видаляти вже завантажені файли.
 
 Видалення власного акаунта:
 

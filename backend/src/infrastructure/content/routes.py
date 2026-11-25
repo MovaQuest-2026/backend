@@ -3,6 +3,7 @@
 from hashlib import sha256
 from pathlib import Path
 from typing import Annotated
+from urllib.parse import quote
 
 from fastapi import APIRouter, File, Query, Request, UploadFile, status
 from fastapi.responses import Response
@@ -12,9 +13,9 @@ from sqlalchemy.exc import IntegrityError
 from ...infrastructure.auth.deps import CurrentSuperUserDep
 from ...infrastructure.dependencies import AsyncSessionDep
 from ...infrastructure.http_exceptions import HTTPException
-from ...modules.content.models import MediaVideo
+from ...modules.content.models import Lesson, MediaVideo
 from ...wiring.settings import settings
-from .schemas import MediaFileResponse
+from .schemas import LessonResponse, MediaFileResponse
 
 router = APIRouter(tags=["Content"])
 
@@ -56,6 +57,42 @@ def _response(video: MediaVideo) -> MediaFileResponse:
         content_type=video.content_type,
         checksum_sha256=video.checksum_sha256,
     )
+
+
+def _lesson_response(lesson: Lesson) -> LessonResponse:
+    """Map the normalized database row to the frontend's catalog contract."""
+    return LessonResponse(
+        id=lesson.slug,
+        title={"es": lesson.title_es, "en": lesson.title_en, "uk": lesson.title_uk},
+        description={"es": lesson.description_es, "en": lesson.description_en, "uk": lesson.description_uk},
+        level=lesson.level,
+        duration_seconds=lesson.duration_seconds,
+        cover=lesson.cover_path,
+        added_at=lesson.added_at.isoformat() if lesson.added_at else None,
+        pinned=lesson.pinned,
+        coming_soon=lesson.coming_soon,
+        video_url=f"/api/v1/content/videos/{quote(lesson.video_name)}" if lesson.video_name else None,
+    )
+
+
+@router.get("/lessons", response_model=list[LessonResponse], summary="List lessons")
+async def list_lessons(db: AsyncSessionDep) -> list[LessonResponse]:
+    """Return the lesson catalog in the same shape the mobile frontend already consumes."""
+    lessons = (
+        await db.execute(
+            select(Lesson).order_by(Lesson.pinned.desc(), Lesson.added_at.desc(), Lesson.slug.asc())
+        )
+    ).scalars().all()
+    return [_lesson_response(lesson) for lesson in lessons]
+
+
+@router.get("/lessons/{lesson_id}", response_model=LessonResponse, summary="Get a lesson")
+async def get_lesson(lesson_id: str, db: AsyncSessionDep) -> LessonResponse:
+    """Return one lesson by the stable ID used by the frontend."""
+    lesson = await db.get(Lesson, lesson_id)
+    if lesson is None:
+        raise HTTPException(status_code=404, detail="Lesson not found.")
+    return _lesson_response(lesson)
 
 
 @router.get("/videos", response_model=list[MediaFileResponse], summary="List stored videos")
