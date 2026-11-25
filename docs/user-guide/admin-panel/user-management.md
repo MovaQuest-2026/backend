@@ -143,24 +143,16 @@ None of these are wired up in the boilerplate — pick the one that fits your en
 
 ## Auditing Admin Activity
 
-The admin panel doesn't log every action by default. If you need an audit trail:
+Successful create, update and delete actions in the admin panel are stored in the
+`admin_audit_logs` table and shown in the read-only **Security → Audit log** view.
+Each event records the configured admin username, action, entity, entity ID, safe
+changed values, IP address, user agent and UTC timestamp. Passwords, tokens, OAuth
+identifiers and binary content are excluded from the stored payload.
 
-- The boilerplate's logging infrastructure (`infrastructure/logging/`) gives you correlation IDs out of the box. SQLAdmin requests pass through it like any other.
-- Override `on_model_change` / `after_model_change` / `delete_model` in your views to log explicitly:
-
-```python
-from src.infrastructure.logging import get_logger
-
-logger = get_logger()
-
-
-class UserAdmin(DataclassModelMixin, ModelView, model=User):
-    async def on_model_change(self, data, model, is_created, request):
-        action = "created" if is_created else "updated"
-        logger.info(f"Admin {action} user", extra={"user_id": data.get("id"), "actor": "admin"})
-```
-
-For richer auditing, write to a dedicated log stream or push events to a SIEM.
+Failed admin logins continue to be written to the authentication audit logger. For
+production incident response, ship both application logs and `admin_audit_logs` to a
+protected retention target or SIEM; the database row is the application audit trail,
+not an append-only external evidence store.
 
 ## Key Files
 

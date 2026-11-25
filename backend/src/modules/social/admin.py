@@ -2,11 +2,11 @@
 
 from sqladmin import ModelView
 
-from ...interfaces.admin.mixins import DataclassModelMixin
+from ...interfaces.admin.mixins import AdminAuditMixin, DataclassModelMixin
 from .models import LessonComment, LessonCommentReport
 
 
-class LessonCommentAdmin(DataclassModelMixin, ModelView, model=LessonComment):
+class LessonCommentAdmin(AdminAuditMixin, DataclassModelMixin, ModelView, model=LessonComment):
     """Review, hide, or remove reported comments."""
 
     name = "Comment"
@@ -26,7 +26,7 @@ class LessonCommentAdmin(DataclassModelMixin, ModelView, model=LessonComment):
     can_export = False
 
 
-class LessonCommentReportAdmin(DataclassModelMixin, ModelView, model=LessonCommentReport):
+class LessonCommentReportAdmin(AdminAuditMixin, DataclassModelMixin, ModelView, model=LessonCommentReport):
     """Inspect user reports without exposing a CSV export of report details."""
 
     name = "Comment report"

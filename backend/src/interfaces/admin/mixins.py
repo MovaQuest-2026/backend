@@ -5,12 +5,33 @@ from datetime import date, time, timedelta
 from decimal import Decimal
 from typing import Any
 
+from crudauth.utils import get_client_ip
 from sqladmin.helpers import Writer, secure_filename, stream_to_csv
 from starlette.requests import Request
 from starlette.responses import StreamingResponse
 
+from ...infrastructure.config.settings import get_settings
+from ...infrastructure.database.session import local_session
+from ...infrastructure.logging import get_logger
+from ...modules.audit_log.models import AdminAuditLog
+
+logger = get_logger()
+
 SPREADSHEET_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
 NUMERIC_CELL_TYPES = (int, float, Decimal, date, time, timedelta)
+AUDIT_REDACTED_FIELDS = frozenset(
+    {
+        "password",
+        "hashed_password",
+        "token",
+        "token_version",
+        "google_id",
+        "github_id",
+        "oauth_created_at",
+        "oauth_updated_at",
+        "content",
+    }
+)
 
 
 def as_spreadsheet_text(value: Any) -> str:
@@ -135,3 +156,95 @@ class DataclassModelMixin:
             await session.refresh(obj)
             await self.after_model_change(data, obj, True, request)  # type: ignore[attr-defined]
             return obj
+
+
+class AdminAuditMixin:
+    """Persist successful SQLAdmin mutations as immutable audit events."""
+
+    async def after_model_change(self, data: dict[str, Any], model: Any, is_created: bool, request: Request) -> None:
+        """Record a successful create or update after SQLAdmin commits the change."""
+        await super().after_model_change(data, model, is_created, request)  # type: ignore[misc]
+        await self._record_audit_event(
+            request=request,
+            action="create" if is_created else "update",
+            model=model,
+            changes=_safe_changes(data),
+        )
+
+    async def delete_model(self, request: Request, pk: str) -> Any:
+        """Record a successful delete while preserving SQLAdmin's delete behavior."""
+        model = await self._load_model_for_audit(pk)
+        result = await super().delete_model(request, pk)  # type: ignore[misc]
+        await self._record_audit_event(
+            request=request,
+            action="delete",
+            model=model,
+            changes=_safe_model_snapshot(model),
+            entity_id=str(pk),
+        )
+        return result
+
+    async def _load_model_for_audit(self, pk: str) -> Any:
+        """Load the row before deletion so the event remains useful after removal."""
+        identifier: Any = int(pk) if pk.isdigit() else pk
+        async with local_session() as session:
+            return await session.get(self.model, identifier)  # type: ignore[attr-defined]
+
+    async def _record_audit_event(
+        self,
+        request: Request,
+        action: str,
+        model: Any,
+        changes: dict[str, Any],
+        entity_id: str | None = None,
+    ) -> None:
+        """Write an audit event without turning an already-completed action into a 500."""
+        settings = get_settings()
+        event = AdminAuditLog(
+            actor=settings.ADMIN_USERNAME or "admin",
+            action=action,
+            entity=type(model).__name__ if model is not None else self.model.__name__,  # type: ignore[attr-defined]
+            entity_id=entity_id or _model_identifier(model),
+            changes=changes,
+            ip_address=get_client_ip(request, settings.TRUSTED_PROXY_HOPS),
+            user_agent=request.headers.get("user-agent"),
+        )
+        try:
+            async with local_session() as session:
+                session.add(event)
+                await session.commit()
+        except Exception:
+            logger.exception("Could not persist admin audit event", extra={"action": action, "entity": event.entity})
+
+
+def _model_identifier(model: Any) -> str | None:
+    """Return a stable string identifier for a model when one is available."""
+    identifier = getattr(model, "id", None) if model is not None else None
+    return str(identifier) if identifier is not None else None
+
+
+def _safe_changes(data: dict[str, Any]) -> dict[str, Any]:
+    """Keep audit payloads JSON-safe and exclude credentials and large/sensitive values."""
+    return {key: _safe_value(key, value) for key, value in data.items() if key not in AUDIT_REDACTED_FIELDS}
+
+
+def _safe_model_snapshot(model: Any) -> dict[str, Any]:
+    """Snapshot mapped columns before deletion, excluding sensitive fields."""
+    if model is None:
+        return {}
+    return _safe_changes({column.key: getattr(model, column.key, None) for column in model.__table__.columns})
+
+
+def _safe_value(field: str, value: Any) -> Any:
+    """Convert values to JSON-safe representations without leaking secrets."""
+    if field in AUDIT_REDACTED_FIELDS:
+        return "[REDACTED]"
+    if isinstance(value, bytes):
+        return f"[BINARY:{len(value)} bytes]"
+    if isinstance(value, (date, time, timedelta)):
+        return value.isoformat()
+    if hasattr(value, "isoformat"):
+        return value.isoformat()
+    if isinstance(value, (str, int, float, bool)) or value is None:
+        return value
+    return str(value)

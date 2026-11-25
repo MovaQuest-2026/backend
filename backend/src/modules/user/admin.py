@@ -15,7 +15,7 @@ from wtforms import Form, SelectField
 
 from ...infrastructure.auth.setup import auth
 from ...infrastructure.database.session import local_session
-from ...interfaces.admin.mixins import DataclassModelMixin, TextCsvExportMixin
+from ...interfaces.admin.mixins import AdminAuditMixin, DataclassModelMixin, TextCsvExportMixin, _safe_model_snapshot
 from .enums import OAuthProvider
 from .models import User
 from .schemas import UserAdminUpdate
@@ -29,7 +29,7 @@ def _tier_model() -> Any:
     return User.__mapper__.relationships["tier"].mapper.class_
 
 
-class UserAdmin(DataclassModelMixin, TextCsvExportMixin, ModelView, model=User):
+class UserAdmin(AdminAuditMixin, DataclassModelMixin, TextCsvExportMixin, ModelView, model=User):
     """Admin view for User model with password hashing."""
 
     name = "User"
@@ -125,4 +125,7 @@ class UserAdmin(DataclassModelMixin, TextCsvExportMixin, ModelView, model=User):
         """
         async with local_session() as db:
             user_service = UserService()
+            user = await db.get(User, int(pk))
+            before_delete = _safe_model_snapshot(user)
             await user_service.anonymize_user(user_id=int(pk), db=db)
+        await self._record_audit_event(request, "delete", user, before_delete, entity_id=pk)
