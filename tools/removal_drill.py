@@ -112,6 +112,7 @@ FEATURES: dict[str, Feature] = {
     "admin": Feature(
         paths=(
             "backend/src/interfaces/admin",
+            "backend/src/modules/audit_log",
             "backend/tests/unit/interfaces/admin",
             "backend/src/wiring/admin.py",
         ),
@@ -544,6 +545,8 @@ def _wiring_models(chosen: set[str]) -> str:
 
 def _wiring_admin(chosen: set[str]) -> str:
     imports, views = [], []
+    if "admin" in chosen:
+        imports.append("from ..modules.audit_log.admin import AdminAuditLogAdmin")
     if "accounts" in chosen:
         imports.append("from ..modules.user.admin import UserAdmin")
         views.append("UserAdmin")
@@ -556,6 +559,8 @@ def _wiring_admin(chosen: set[str]) -> str:
     if "rbac" in chosen:
         imports.append("from ..modules.role.admin import RoleAdmin, RolePermissionAdmin, UserRoleAdmin")
         views.extend(["RoleAdmin", "RolePermissionAdmin", "UserRoleAdmin"])
+    if "admin" in chosen:
+        views.append("AdminAuditLogAdmin")
     body = "(\n    " + ",\n    ".join(views) + ",\n)" if views else "()"
     return (
         '"""The model views the admin panel registers."""\n\n'

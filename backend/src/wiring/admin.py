@@ -3,6 +3,7 @@
 Written by the generator in `tools/removal_drill.py`, which a test compares this file against.
 """
 
+from ..modules.audit_log.admin import AdminAuditLogAdmin
 from ..modules.role.admin import RoleAdmin, RolePermissionAdmin, UserRoleAdmin
 from ..modules.social.admin import LessonCommentAdmin, LessonCommentReportAdmin
 from ..modules.tier.admin import TierAdmin
@@ -16,4 +17,5 @@ ADMIN_VIEWS: tuple[type, ...] = (
     RoleAdmin,
     RolePermissionAdmin,
     UserRoleAdmin,
+    AdminAuditLogAdmin,
 )

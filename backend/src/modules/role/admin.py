@@ -18,7 +18,7 @@ from starlette.requests import Request
 from wtforms import Form, SelectField
 
 from ...infrastructure.permissions import permission_groups
-from ...interfaces.admin.mixins import DataclassModelMixin, TextCsvExportMixin
+from ...interfaces.admin.mixins import AdminAuditMixin, DataclassModelMixin, TextCsvExportMixin
 from .models import Role, RolePermission, UserRole
 
 
@@ -44,7 +44,7 @@ def carried_permissions(role: Any, _: Any) -> str:
     return ", ".join(sorted(grant.permission_name for grant in role.permissions))
 
 
-class RoleAdmin(DataclassModelMixin, TextCsvExportMixin, ModelView, model=Role):
+class RoleAdmin(AdminAuditMixin, DataclassModelMixin, TextCsvExportMixin, ModelView, model=Role):
     """Roles, each with the permissions it carries."""
 
     name = "Role"
@@ -69,7 +69,7 @@ class RoleAdmin(DataclassModelMixin, TextCsvExportMixin, ModelView, model=Role):
     form_columns = [Role.name, Role.description]
 
 
-class RolePermissionAdmin(DataclassModelMixin, TextCsvExportMixin, ModelView, model=RolePermission):
+class RolePermissionAdmin(AdminAuditMixin, DataclassModelMixin, TextCsvExportMixin, ModelView, model=RolePermission):
     """The grants that make up a role: one permission name per row."""
 
     name = "Role permission"
@@ -99,7 +99,7 @@ class RolePermissionAdmin(DataclassModelMixin, TextCsvExportMixin, ModelView, mo
         return form_class
 
 
-class UserRoleAdmin(DataclassModelMixin, TextCsvExportMixin, ModelView, model=UserRole):
+class UserRoleAdmin(AdminAuditMixin, DataclassModelMixin, TextCsvExportMixin, ModelView, model=UserRole):
     """Who holds which role."""
 
     name = "User role"

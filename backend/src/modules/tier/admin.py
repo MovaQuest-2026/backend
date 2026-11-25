@@ -5,14 +5,14 @@ from sqlalchemy import Select
 from starlette.requests import Request
 
 from ...infrastructure.database.session import local_session
-from ...interfaces.admin.mixins import DataclassModelMixin, TextCsvExportMixin
+from ...interfaces.admin.mixins import AdminAuditMixin, DataclassModelMixin, TextCsvExportMixin
 from .crud import crud_tiers
 from .models import Tier
 from .schemas import TierCreate, TierUpdate
 from .service import TierService
 
 
-class TierAdmin(DataclassModelMixin, TextCsvExportMixin, ModelView, model=Tier):
+class TierAdmin(AdminAuditMixin, DataclassModelMixin, TextCsvExportMixin, ModelView, model=Tier):
     """Admin view for Tier model."""
 
     name = "Tier"
@@ -63,4 +63,6 @@ class TierAdmin(DataclassModelMixin, TextCsvExportMixin, ModelView, model=Tier):
             if not tier:
                 raise ValueError(f"Tier with ID {pk} not found")
 
-            await tier_service.permanent_delete(tier["name"], db)
+            tier_name = tier["name"]
+            await tier_service.permanent_delete(tier_name, db)
+        await self._record_audit_event(request, "delete", None, {"name": tier_name}, entity_id=pk)
