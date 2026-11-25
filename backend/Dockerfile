@@ -95,4 +95,4 @@ USER appuser
 
 # Production command with FastAPI CLI and configurable workers
 ENV WORKERS=1
-CMD ["sh", "-c", "fastapi run interfaces/main.py --host 0.0.0.0 --port ${PORT:-8000} --workers ${WORKERS:-1}"]
+CMD ["sh", "-c", "CONFIRM_PRODUCTION_MIGRATION=yes alembic upgrade head && exec fastapi run interfaces/main.py --host 0.0.0.0 --port ${PORT:-8000} --workers ${WORKERS:-1}"]

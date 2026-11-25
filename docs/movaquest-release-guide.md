@@ -81,10 +81,9 @@ API key має залишатися тільки в backend Environment Variable
 ### Варіант A — PostgreSQL BYTEA для поточного релізу
 
 1. Переконатися, що Render Postgres має достатньо storage для бази, міграцій і всіх відео.
-2. На платному Render-сервісі застосувати `CONFIRM_PRODUCTION_MIGRATION=yes alembic upgrade head` у Pre-Deploy Command.
-   На Free-плані, де Pre-Deploy Command недоступна, виконати міграцію одноразово з локального середовища
-   через External Database URL або додати міграцію перед стартом у Docker Command; останній варіант запускає
-   перевірку міграцій при кожному restart.
+2. Production Docker image вже запускає `CONFIRM_PRODUCTION_MIGRATION=yes alembic upgrade head`
+   перед FastAPI. Це покриває Free-план Render, де Pre-Deploy Command недоступна; при кожному restart
+   Alembic перевіряє версію і застосовує лише нові міграції.
 3. Через admin token/session завантажити файл: `POST /api/v1/content/videos?name=lesson-1.mp4` з multipart-полем `video`.
 4. Перевірити `GET /api/v1/content/videos/lesson-1.mp4`, `DELETE /api/v1/content/videos/lesson-1.mp4` і `Range`-запити мобільним відеоплеєром.
 5. Контролювати usage Postgres і зберігати оригінали відео окремо: database backup не замінює незалежну копію файлів.
@@ -98,7 +97,7 @@ API key має залишатися тільки в backend Environment Variable
 ## 4. Застосувати міграції бази даних
 
 У репозиторії додані міграції для mobile refresh/OAuth credentials, скарг на коментарі, audit log та lesson catalog.
-На платному Render-сервісі у Pre-Deploy Command встановити:
+Для ручного запуску на платному Render-сервісі або локально встановити:
 
 ```bash
 CONFIRM_PRODUCTION_MIGRATION=yes alembic upgrade head

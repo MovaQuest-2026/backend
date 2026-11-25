@@ -37,11 +37,14 @@ Production deployment планується виконувати на Render:
 - **Web Service** запускає Dockerfile зі stage `prod`.
 - **Render Postgres** використовується як production database.
 - `DATABASE_URL` передається через Environment Variables Render; для сервісу всередині Render потрібно використовувати internal database URL. Оскільки database layer синхронний, URL має використовувати драйвер `postgresql+psycopg2://`.
-- Для Render використовується **Pre-Deploy Command** з міграціями:
+- Для Render production Docker image застосовує міграції перед стартом API:
 
   ```bash
   CONFIRM_PRODUCTION_MIGRATION=yes alembic upgrade head
   ```
+
+  Команда вбудована в `prod` stage `backend/Dockerfile`, тому окреме поле Pre-Deploy Command на Free-плані не потрібне.
+  Якщо міграція завершується помилкою, FastAPI не запускається.
 
   Для вже існуючої бази, яку раніше створював `scripts.create_tables`, спочатку виконайте
   `CONFIRM_PRODUCTION_MIGRATION=yes alembic stamp ae2deece1038`, а потім `alembic upgrade head`. Якщо база ще не містить
