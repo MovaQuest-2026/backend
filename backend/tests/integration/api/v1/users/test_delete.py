@@ -31,6 +31,26 @@ async def test_soft_delete_success(
     assert get_response.status_code == 404
 
 
+async def test_delete_my_account_success(
+    auth_client: AsyncClient,
+    db_session: AsyncSession,
+    test_user: dict,
+):
+    """A signed-in user can permanently delete only their own account."""
+    response = await auth_client.delete("/api/v1/users/me")
+
+    assert response.status_code == 204
+    assert response.content == b""
+    assert (await auth_client.get("/api/v1/users/me")).status_code == 401
+
+
+async def test_delete_my_account_requires_authentication(client: AsyncClient):
+    """Account deletion never accepts an anonymous request."""
+    response = await client.delete("/api/v1/users/me")
+
+    assert response.status_code == 401
+
+
 async def test_soft_delete_unauthorized(
     client: AsyncClient,
     db_session: AsyncSession,

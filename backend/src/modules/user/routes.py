@@ -144,7 +144,19 @@ async def get_current_user_profile(
     return current_user
 
 
-@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT, summary="Permanently delete my account")
+@router.delete(
+    "/me",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Permanently delete my account",
+    description=(
+        "Permanently deletes the authenticated user's account, revokes all server-side sessions, "
+        "removes API keys and related usage rows, and returns 204 with an empty body."
+    ),
+    responses={
+        401: {"description": "Authentication required"},
+        204: {"description": "Account deleted successfully"},
+    },
+)
 async def permanently_delete_my_account(current_user: CurrentUserDep, db: AsyncSessionDep) -> Response:
     """Delete the signed-in account and its FK-cascaded data, ending server-side sessions first."""
     manager = session_transport.manager
